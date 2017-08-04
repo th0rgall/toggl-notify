@@ -7,7 +7,7 @@
     {
       "matches": ["http://www.toggl.com/app*", "https://www.toggl.com/app*" ],
       "css": ["toggl-notify.css"],
-      "js": ["node_modules/jquery/dist/jquery.min.js", "toggl-notify.js"]
+      "js": ["static/bundle.js"]
     }
   ]
 }
