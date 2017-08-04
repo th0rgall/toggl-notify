@@ -1,0 +1,20 @@
+{
+  "name": "toggl-notify",
+  "version": "0.0.1",
+  "description": "Chrome extensions that notifies you when your current Toggl timer exceeds a configurable time bound.",
+  "main": "toggl-notify.js",
+  "dependencies": {
+    "jquery": "^3.2.1",
+    "rxjs": "^5.4.2"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "toggl",
+    "timer"
+  ],
+  "author": "th0rgall",
+  "license": "ISC"
+}
