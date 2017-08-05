@@ -11,7 +11,7 @@
     "browserify-shim": "^3.8.14"
   },
   "scripts": {
-    "run": "watchify toggl-notify.js -o static/bundle.js -v",
+    "start": "watchify toggl-notify.js -o static/bundle.js -v",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
