@@ -16,7 +16,7 @@ After one hour of hard web programming work, you will get a simple notification 
 
 ## How to install
 
-1. Go to the releases page and download the latest .crx package.
+1. Go to the [releases page](https://github.com/th0rgall/toggl-notify/releases) and download the latest .crx package.
 2. In Chrome, go to [chrome://extensions/](chrome://extensions/) and drag & drop the downloaded .crx in there.
 3. A popup should now appear that allows you to install the extension.
 
@@ -31,7 +31,7 @@ Next to that, I used this as an excuse to step up my [reactive programming](http
 1. A stream of ticks of the currently active Toggl timer (per second)
 
 
-2. A stream of input changes (the notify me after field)
+2. A stream of input changes (the "notify me after" field)
 
 These are then combined using rxjs magic and will ask the background script to send notifications when necessary.
 
@@ -41,4 +41,4 @@ To get developing, just clone the repo and run `npm install` in your command lin
 
 Now follow the install instructions [here](https://developer.chrome.com/extensions/getstarted#unpacked) to try a development version of the extension in Chrome.
 
-I use the Github Issues section as a todo list. Feel free to pick in on there & send me pull requests!
+I use the [Github Issues](https://github.com/th0rgall/toggl-notify/issues) section as a todo list. Feel free to pick in on there & send me pull requests!
