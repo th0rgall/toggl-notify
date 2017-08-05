@@ -3,14 +3,9 @@ var $ = require("jquery");
 
 // TODO: re-insert controls after change to manual and back
 
-// global var
-// the timer duration in seconds after which a notification should pop up
-var timerSecs = 0;
-
 // duration in the form "hh:mm:ss" to seconds
 // alternate forms allowed: hh:mm, mm
 // with an arbitrary amount of zeroes before a pair of digits
-// TODO: might need better input validation
 function durToSec(hhmmss) {
   var tokens = hhmmss.split(":");
   // parse functions
@@ -54,15 +49,22 @@ function createControls(f) {
   return controlContainer;
 }
 
-// returns an observable for expected time amounts00
-function createInputChange(inputElem) {
-  return Rx.Observable.fromEvent(inputElem, "change")
+// returns an observable event stream for the duration inserted
+// storeF is a function that gets passed the produced even stream
+function createInputStream(storeF, inputElem) {
+  var eventStream = Rx.Observable.fromEvent(inputElem, "change")
     // filter for convertable formats looking somewhat like hh:mm:ss or hh:mm or mm
-    .filter((event) => event.target.value.match(/^\s*(0*[1-9]{0,2}:){0,2}(0*[1-9]{0,2})?\s*$/g))
+    .filter((event) => event.target.value.match(/^\s*(0*[0-9]{0,2}:){0,2}(0*[0-9]{0,2})?\s*$/g))
     // map to seconds
     .map((event) => durToSec(event.target.value))
     // realistic time bounds
     .filter((sec) => sec > 0 && sec < 259200);
+
+    eventStream.subscribe((input) => console.log("input " + input))
+
+    // store the stream somewhere
+    storeF(eventStream);
+    return eventStream;
 }
 
 // checks new time values (every second) and triggers a notification to the background page if necessary
@@ -77,13 +79,17 @@ function getData() {
 
   // $(".Timer__duration .time-format-utils__duration")[0].innerText
 
-  // insert controls
+  var inputStream = null;
+
+  // insert controls & initialize inputStream
   $(".Timer__timer .DateTimeDurationPopdown__popdown > div")
-    .append(createControls(createInputChange));
+    .append(createControls(createInputStream.bind(null, (stream) => inputStream = stream)));
 
   // log time
   var timer_duration = $(".Timer__duration");
   if (timer_duration.length > 0) {
+
+    // creates a stream of Toggl timer ticks from the dom
 
     var timeObs = Rx.Observable.fromEvent(timer_duration[0], "DOMNodeRemoved")
       // two text nodes get removed and added again every second
@@ -95,11 +101,18 @@ function getData() {
           if (timerWrapper) {
             return durToSec(timerWrapper[0].innerText);
           }
-          else { throw "Can't parse time from Toggl" }
+          else { throw "Can't parse Toggl timer from the DOM" }
         }
       );
 
+    var notifyObs = timeObs.combineLatest(inputStream)
+      .filter((inputs) => {
+        console.log("lala?", inputs);
+        return (inputs[0] > inputs[1]);
+      });
+
     timeObs.subscribe((time) => console.log(time));
+    notifyObs.subscribe((time) => console.log("staph it!"));
   }
 }
 
