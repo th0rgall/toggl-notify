@@ -1,14 +1,15 @@
 {
   "name": "toggl-notify",
-  "version": "0.0.1",
-  "description": "Chrome extensions that notifies you when your current Toggl timer exceeds a configurable time bound.",
+  "version": "0.1.0",
+  "description": "Chrome extension that notifies you when your current Toggl timer exceeds a configurable time bound.",
   "main": "toggl-notify.js",
   "dependencies": {
     "jquery": "^3.2.1",
     "rxjs": "^5.4.2"
   },
   "devDependencies": {
-    "browserify-shim": "^3.8.14"
+    "browserify": "^14.4.0",
+    "watchify": "^3.9.0"
   },
   "scripts": {
     "start": "watchify toggl-notify.js -o static/bundle.js -v",
@@ -19,5 +20,5 @@
     "timer"
   ],
   "author": "th0rgall",
-  "license": "ISC"
+  "license": "MIT"
 }
