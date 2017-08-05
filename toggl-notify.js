@@ -1,11 +1,19 @@
+/*
+
+*/
+
+
 var Rx = require('rxjs/Rx');
 var $ = require("jquery");
 
 // TODO: re-insert controls after change to manual and back
 
-// duration in the form "hh:mm:ss" to seconds
-// alternate forms allowed: hh:mm, mm
-// with an arbitrary amount of zeroes before a pair of digits
+/**
+@param hhmmss duration in the form "hh:mm:ss" to seconds
+              alternate forms allowed: "hh:mm", "mm"
+              with an arbitrary amount of zeroes before a pair of digits
+@return the amount of seconds that the input duration specifies
+*/
 function durToSec(hhmmss) {
   var tokens = hhmmss.split(":");
   // parse functions
@@ -23,9 +31,12 @@ function durToSec(hhmmss) {
   }
 }
 
-// creates the HTML controls element
-// f is a function that will be passed the <input> tag so an event handler can be bound
-function createControls(f) {
+/**creates the HTML controls element
+@param f a function that will be passed the <input> tag so an event handler can be bound
+@param tval is the default input (time) value when creating the control
+@return a HTML Element representation of the controls
+*/
+function createControls(f, tval) {
 
   var controlContainer = $("<div>", {
     class: "DateTimeDurationPopdown__header",
@@ -39,7 +50,7 @@ function createControls(f) {
   var inputCtrl = $("<input>", {
     type: "text",
     class: "DateTimeDurationPopdown__duration",
-    value: "0:00:00",
+    value: tval,
     style: "padding: 0.3em 0 0.5em 0;"
   });
   // add event listener
@@ -49,8 +60,11 @@ function createControls(f) {
   return controlContainer;
 }
 
-// returns an observable event stream for the duration inserted
-// storeF is a function that gets passed the produced even stream
+/**
+  @param storeF a function that gets passed the produced even stream
+  @param inputElem the HTML element which changes when a new timer is set
+  @return an observable event stream input with timer input changes
+*/
 function createInputStream(storeF, inputElem) {
   var eventStream = Rx.Observable.fromEvent(inputElem, "change")
     // filter for convertable formats looking somewhat like hh:mm:ss or hh:mm or mm
@@ -67,58 +81,77 @@ function createInputStream(storeF, inputElem) {
     return eventStream;
 }
 
-// checks new time values (every second) and triggers a notification to the background page if necessary
-function checkNotify(currentSecs) {
-  if (timerSecs > 0 && currentSecs > timerSecs) {
-    console.log("STAPH IT!!!");
+/**
+  Triggers a notification to the background page.
+*/
+function sendNotification() {
+  chrome.extension.sendRequest({msg: "Sup?"}, function(response) {
+      console.log(response.returnMsg);
+  });
+};
+
+/**
+  @return the current Toggl timer duration text in the form "hh:mm:ss"
+  @throws an error when it couldn't be parsed
+*/
+function getDOMDuration() {
+  var timerWrapper = $(".Timer__duration .time-format-utils__duration");
+  if (timerWrapper) {
+    return timerWrapper[0].innerText;
   }
+  else { throw "Can't parse Toggl timer from the DOM" }
 }
 
-// main injection function
+/**
+  main injection function
+  */
 function getData() {
-
-  // $(".Timer__duration .time-format-utils__duration")[0].innerText
 
   var inputStream = null;
 
   // insert controls & initialize inputStream
   $(".Timer__timer .DateTimeDurationPopdown__popdown > div")
-    .append(createControls(createInputStream.bind(null, (stream) => inputStream = stream)));
+    .append(createControls(createInputStream.bind(null, (stream) => inputStream = stream), getDOMDuration()));
 
   // log time
   var timer_duration = $(".Timer__duration");
   if (timer_duration.length > 0) {
 
-    // creates a stream of Toggl timer ticks from the dom
-
+    // creates a stream of Toggl timer ticks from the DOM
     var timeObs = Rx.Observable.fromEvent(timer_duration[0], "DOMNodeRemoved")
       // two text nodes get removed and added again every second
       // so bundle these
       .bufferCount(2,2)
       // every second counted by Toggl, get the new value
-      .map(() => {
-          var timerWrapper = $(".Timer__duration .time-format-utils__duration");
-          if (timerWrapper) {
-            return durToSec(timerWrapper[0].innerText);
-          }
-          else { throw "Can't parse Toggl timer from the DOM" }
-        }
-      );
+      .map(() => durToSec(getDOMDuration()));
 
-    var notifyObs = timeObs.combineLatest(inputStream)
+    // creates a stream of events where notifications should be sent
+    var notifyObs = timeObs
+      // combine latest time tick with latest input
+      .combineLatest(inputStream)
+      // check whether the timer has exceeded the input
       .filter((inputs) => {
-        console.log("lala?", inputs);
+        // 0 has the timer, 1 the input strea
         return (inputs[0] > inputs[1]);
-      });
+      })
+      // bundle every two successive events, starting with 0
+      .startWith(0)
+      .bufferCount(2,1)
+      // now compare to the previous event
+      // only notify when a different input was given
+      .filter( (arr) => arr[0][1] != arr[1][1]);
 
-    timeObs.subscribe((time) => console.log(time));
-    notifyObs.subscribe((time) => console.log("staph it!"));
+
+    notifyObs.subscribe((time) => {
+      sendNotification();
+    });
   }
 }
 
-
 $(document).ready(
   function() {
+    // TODO: timeout needed to let the page load
+    // find a safer way to do this
     setTimeout(getData, 3500);
   }
 );

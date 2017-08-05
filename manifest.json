@@ -3,6 +3,12 @@
   "name": "Toggl Notify",
   "version": "0.0.1",
   "author": "th0rgall",
+  "permissions": [
+    "notifications"
+  ],
+  "background": {
+    "scripts": ["background.js"]
+  },
   "content_scripts": [
     {
       "matches": ["http://www.toggl.com/app*", "https://www.toggl.com/app*" ],
