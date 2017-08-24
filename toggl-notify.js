@@ -108,10 +108,13 @@ function getDOMDuration() {
 function initializeControls(callback) {
   // init controls if needed
   if ($("#notify-controls").length == 0) {
-    console.log("will do reinit");
+    console.log("will check reinit");
     // insert controls & initialize inputStream
     var timerDuration = $(".Timer__timer .DateTimeDurationPopdown__popdown > div");
-    if (timerDuration) timerDuration.append(createControls(createInputStream.bind(null, (stream) => callback(stream)), getDOMDuration()));
+    if (timerDuration.length > 0) {
+      console.log("doing reinit")
+      timerDuration.append(createControls(createInputStream.bind(null, (stream) => callback(stream)), getDOMDuration()));
+    }
   }
 
 }
@@ -125,16 +128,21 @@ function getData() {
 
   initializeControls((stream) => inputStream = stream);
 
-  // add reinit event (spawns too much, but yeah)
-  var timerForm = $(".TimerForm__newTimeEntry");
-  console.log("herio?");
-  if (timerForm) {
-    console.log("here?");
-    timerForm[0].addEventListener("DOMNodeRemoved", function() {
-      console.log("try reinit");
-      initializeControls((stream) => inputStream = stream);
-    });
+
+  /* Set an interval to check when to (re)initialize the controls
+     Disable periodical checking when the tab is hidden */
+  var refreshId = null;
+
+  function resetInterval() {
+    if (refreshId) { clearInterval(refreshId);} // to be sure
+    console.log("Visibility change:" + document.visibilityState);
+    if (document.visibilityState == "visible") {
+      refreshId = setInterval(initializeControls.bind(null, (stream) => inputStream = stream), 2500);
+    }
   }
+
+  resetInterval(); // first run
+  document.addEventListener('visibilitychange', resetInterval);
 
   // log time
   var timer_duration = $(".Timer__duration");
