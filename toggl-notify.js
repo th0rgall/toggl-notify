@@ -2,7 +2,6 @@
 
 */
 
-
 var Rx = require('rxjs/Rx');
 var $ = require("jquery");
 
@@ -74,7 +73,7 @@ function createInputStream(storeF, inputElem) {
     // realistic time bounds
     .filter((sec) => sec > 0 && sec < 259200);
 
-    eventStream.subscribe((input) => console.log("input " + input))
+    eventStream.subscribe((input) => console.log("input " + input));
 
     // store the stream somewhere
     storeF(eventStream);
@@ -96,10 +95,25 @@ function sendNotification() {
 */
 function getDOMDuration() {
   var timerWrapper = $(".Timer__duration .time-format-utils__duration");
-  if (timerWrapper) {
+  if (timerWrapper.length > 0) {
     return timerWrapper[0].innerText;
   }
   else { throw "Can't parse Toggl timer from the DOM" }
+}
+
+/**
+  (re)initialze the controls (remove & create them)
+  calls back the generated inputStream
+*/
+function initializeControls(callback) {
+  // init controls if needed
+  if ($("#notify-controls").length == 0) {
+    console.log("will do reinit");
+    // insert controls & initialize inputStream
+    var timerDuration = $(".Timer__timer .DateTimeDurationPopdown__popdown > div");
+    if (timerDuration) timerDuration.append(createControls(createInputStream.bind(null, (stream) => callback(stream)), getDOMDuration()));
+  }
+
 }
 
 /**
@@ -109,9 +123,18 @@ function getData() {
 
   var inputStream = null;
 
-  // insert controls & initialize inputStream
-  $(".Timer__timer .DateTimeDurationPopdown__popdown > div")
-    .append(createControls(createInputStream.bind(null, (stream) => inputStream = stream), getDOMDuration()));
+  initializeControls((stream) => inputStream = stream);
+
+  // add reinit event (spawns too much, but yeah)
+  var timerForm = $(".TimerForm__newTimeEntry");
+  console.log("herio?");
+  if (timerForm) {
+    console.log("here?");
+    timerForm[0].addEventListener("DOMNodeRemoved", function() {
+      console.log("try reinit");
+      initializeControls((stream) => inputStream = stream);
+    });
+  }
 
   // log time
   var timer_duration = $(".Timer__duration");
