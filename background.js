@@ -9,7 +9,7 @@ chrome.extension.onRequest.addListener(
           break;
         case "startTimer": // params: {currentTime: ..., timerGoal: ... }
           startTogglTimer(request.params.currentTime, request.params.timerGoal);
-          sendResponse({message: "Background started timer"});
+          sendResponse({message: "Background started timer: " + JSON.stringify(request.params)});
           break;
         case "getTimer":
           // STUB TODO: needed to initialize when tab was closed
