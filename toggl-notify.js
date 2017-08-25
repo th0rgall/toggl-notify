@@ -62,7 +62,7 @@ function createControls(f, tval) {
 /**
   @param storeF a function that gets passed the produced even stream
   @param inputElem the HTML element which changes when a new timer is set
-  @return an observable event stream input with timer input changes
+  @return an observable event stream with timer input changes (in seconds)
 */
 function createInputStream(storeF, inputElem) {
   var eventStream = Rx.Observable.fromEvent(inputElem, "change")
@@ -84,10 +84,16 @@ function createInputStream(storeF, inputElem) {
   Triggers a notification to the background page.
 */
 function sendNotification() {
-  chrome.extension.sendRequest({msg: "Sup?"}, function(response) {
-      console.log(response.returnMsg);
+  chrome.extension.sendRequest({type: "notify"}, function(response) {
+    if (response && response.message) console.log(response.message);
   });
 };
+
+function sendNewTimer(currentTime, timerGoal) {
+  chrome.extension.sendRequest({type: "startTimer", params: {currentTime: currentTime, timerGoal: timerGoal}}, function(response) {
+      if (response && response.message) console.log(response.message);
+  });
+}
 
 /**
   @return the current Toggl timer duration text in the form "hh:mm:ss"
@@ -172,8 +178,12 @@ function getData() {
       // only notify when a different input was given
       .filter( (arr) => arr[0][1] != arr[1][1]);
 
+    // TODO: extra - new system
 
-    notifyObs.subscribe((time) => {
+    inputStream.subscribe((sec) => sendNewTimer(durToSec(getDOMDuration()), sec))
+
+
+    notifyObs.subscribe((arr) => {
       sendNotification();
     });
   }
