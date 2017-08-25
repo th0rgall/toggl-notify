@@ -2,7 +2,6 @@
 
 */
 
-
 var Rx = require('rxjs/Rx');
 var $ = require("jquery");
 
@@ -15,6 +14,9 @@ var $ = require("jquery");
 @return the amount of seconds that the input duration specifies
 */
 function durToSec(hhmmss) {
+
+  if (!hhmmss) return(0);
+
   var tokens = hhmmss.split(":");
   // parse functions
   var pHour = (hour) => +(hour) * 3600;
@@ -29,6 +31,27 @@ function durToSec(hhmmss) {
       return pHour(tokens[0]) + pMin(tokens[1]) + (tokens.length == 3 ? pSec(tokens[2]) : 0);
     }
   }
+}
+
+function pad(s) {
+  if (("" + s).length == 1) {
+    return "0" + s;
+  }
+  else {
+    return s;
+  }
+}
+
+function secToDur(s) {
+  if (!s) return("00:00:00");
+
+  h = Math.floor(s/3600);
+  s -= h * 3600;
+  m = Math.floor(s/60);
+  s -= m * 60;
+
+  return `${pad(h)}:${pad(m)}:${pad(s)}`;
+
 }
 
 /**creates the HTML controls element
@@ -50,6 +73,7 @@ function createControls(f, tval) {
   var inputCtrl = $("<input>", {
     type: "text",
     class: "DateTimeDurationPopdown__duration",
+    id: "timer-input",
     value: tval,
     style: "padding: 0.3em 0 0.5em 0;"
   });
@@ -63,7 +87,7 @@ function createControls(f, tval) {
 /**
   @param storeF a function that gets passed the produced even stream
   @param inputElem the HTML element which changes when a new timer is set
-  @return an observable event stream input with timer input changes
+  @return an observable event stream with timer input changes (in seconds)
 */
 function createInputStream(storeF, inputElem) {
   var eventStream = Rx.Observable.fromEvent(inputElem, "change")
@@ -74,7 +98,7 @@ function createInputStream(storeF, inputElem) {
     // realistic time bounds
     .filter((sec) => sec > 0 && sec < 259200);
 
-    eventStream.subscribe((input) => console.log("input " + input))
+    eventStream.subscribe((input) => console.log("input " + input));
 
     // store the stream somewhere
     storeF(eventStream);
@@ -85,73 +109,131 @@ function createInputStream(storeF, inputElem) {
   Triggers a notification to the background page.
 */
 function sendNotification() {
-  chrome.extension.sendRequest({msg: "Sup?"}, function(response) {
-      console.log(response.returnMsg);
+  chrome.extension.sendRequest({type: "notify"}, function(response) {
+    if (response && response.message) console.log(response.message);
   });
 };
 
+function sendNewTimer(currentTime, timerGoal) {
+  chrome.extension.sendRequest({type: "startTimer", params: {currentTime: currentTime, timerGoal: timerGoal}}, function(response) {
+      if (response && response.message) console.log(response.message);
+  });
+}
+
 /**
-  @return the current Toggl timer duration text in the form "hh:mm:ss"
+  Gets the current timer goal from the background
+  returns null if there is none
+  calls back with timerGoal in seconds
+*/
+function getTimerGoal(callback) {
+  chrome.extension.sendRequest({type: "getTimer"}, function(response) {
+      if (response && response.timerGoal) {
+        callback(response.timerGoal);
+      }
+      else {
+        callback(response);
+      }
+  });
+}
+
+function getInitialTimerGoal(callback) {
+    getTimerGoal((goal) => {
+      if (goal) {
+        callback(secToDur(goal));
+      }
+      else {
+        callback(getDuration());
+      }
+    });
+}
+
+/**
+  Abstracts a pattern to handle individual elements retrieved with jQuery
+  @param query jquery sring
+  @param action function to execute jquery result, if existing
+  @return the result of the action
+*/
+function queryAction(query, action) {
+  var queryObject = $(query);
+  if (queryObject && queryObject.length > 0) {
+      return action(queryObject);
+  }
+  else {
+    console.log("Query: '" + query + "' did not give a parseable result.");
+  }
+}
+
+/**
+  @return the current Toggl timer DOM duration text in the form "hh:mm:ss"
   @throws an error when it couldn't be parsed
 */
-function getDOMDuration() {
-  var timerWrapper = $(".Timer__duration .time-format-utils__duration");
-  if (timerWrapper) {
+function getDuration() {
+  return queryAction(".Timer__duration .time-format-utils__duration", function(timerWrapper) {
     return timerWrapper[0].innerText;
+  });
+}
+
+/**
+  (re)initialze the controls (remove & create them)
+  calls back the generated inputStream
+*/
+function initializeControls(callback) {
+  // init controls if needed
+  if ($("#notify-controls").length == 0) {
+    console.log("will check reinit");
+    // insert controls & initialize inputStream
+    // query checks for right page
+    queryAction(".Timer__timer .DateTimeDurationPopdown__popdown > div", function(timerDuration) {
+      console.log("doing reinit");
+      getInitialTimerGoal((goal) =>
+        timerDuration.append(
+          createControls(createInputStream.bind(null, (stream) => callback(stream)), goal) ) );
+    });
   }
-  else { throw "Can't parse Toggl timer from the DOM" }
 }
 
 /**
   main injection function
   */
-function getData() {
+function initialize() {
 
   var inputStream = null;
 
-  // insert controls & initialize inputStream
-  $(".Timer__timer .DateTimeDurationPopdown__popdown > div")
-    .append(createControls(createInputStream.bind(null, (stream) => inputStream = stream), getDOMDuration()));
+  initializeControls((stream) => {
+    inputStream = stream;
 
-  // log time
-  var timer_duration = $(".Timer__duration");
-  if (timer_duration.length > 0) {
-
-    // creates a stream of Toggl timer ticks from the DOM
-    var timeObs = Rx.Observable.fromEvent(timer_duration[0], "DOMNodeRemoved")
-      // two text nodes get removed and added again every second
-      // so bundle these
-      .bufferCount(2,2)
-      // every second counted by Toggl, get the new value
-      .map(() => durToSec(getDOMDuration()));
-
-    // creates a stream of events where notifications should be sent
-    var notifyObs = timeObs
-      // combine latest time tick with latest input
-      .combineLatest(inputStream)
-      // check whether the timer has exceeded the input
-      .filter((inputs) => {
-        // 0 has the timer, 1 the input strea
-        return (inputs[0] > inputs[1]);
-      })
-      // bundle every two successive events, starting with 0
-      .startWith(0)
-      .bufferCount(2,1)
-      // now compare to the previous event
-      // only notify when a different input was given
-      .filter( (arr) => arr[0][1] != arr[1][1]);
-
-
-    notifyObs.subscribe((time) => {
-      sendNotification();
+    // log time
+    // query to guard for getDuration()
+    queryAction(".Timer__duration", function(timer_duration) {
+      inputStream
+      .map((sec) => [sec, durToSec(getDuration())])
+      .filter((arr) => arr[0] > arr[1]) //
+      .subscribe((arr) => sendNewTimer(arr[1], arr[0]));
     });
+  });
+
+  /* Set an interval to check when to (re)initialize the controls
+     Disable periodical checking when the tab is hidden */
+  var refreshId = null;
+
+  function resetInterval() {
+    if (refreshId) { clearInterval(refreshId);} // to be sure
+    console.log("Visibility change:" + document.visibilityState);
+    if (document.visibilityState == "visible") {
+      refreshId = setInterval(initializeControls.bind(null, (stream) => inputStream = stream), 2500);
+    }
   }
+
+  resetInterval(); // first run
+  document.addEventListener('visibilitychange', resetInterval);
+
+
 }
 
 $(document).ready(
   function() {
     // TODO: timeout needed to let the page load
     // find a safer way to do this
-    setTimeout(getData, 3500);
+    setTimeout(initialize, 3500);
   }
 );
