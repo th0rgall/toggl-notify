@@ -12,28 +12,19 @@ After one hour of hard web programming work, you will get a simple notification 
 
 ![](https://i.imgur.com/Eqhq3CK.png)
 
-
-
-## How to install
+## Installation
 
 1. Go to the [releases page](https://github.com/th0rgall/toggl-notify/releases) and download the latest .crx package.
 2. In Chrome, go to [chrome://extensions/](chrome://extensions/) and drag & drop the downloaded .crx in there.
 3. A popup should now appear that allows you to install the extension.
 
-## How it was made
+## Behind the scenes
 
-This is a fairly simple Chrome extension, everything runs client-side.
+This is a fairly simple Chrome extension, everything runs client-side. The Toggl API is not used.
 
-It uses jQuery in a Chrome content script to communicate with the DOM of the Toggl web app. 
-
-Next to that, I used this as an excuse to step up my [reactive programming](http://reactivex.io/) game; there are two main event streams being created:
-
-1. A stream of ticks of the currently active Toggl timer (per second)
-
-
-2. A stream of input changes (the "notify me after" field)
-
-These are then combined using rxjs magic and will ask the background script to send notifications when necessary.
+- jQuery is used in a Chrome content script to interact with the DOM of the Toggl web app.
+- A background script holds the state of the timer and lasts through the browser session.
+- The two communicate to start new timers and get the current timer state.
 
 ## How to hack it
 
