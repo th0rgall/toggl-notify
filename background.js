@@ -41,11 +41,16 @@ var currentTimer = null;
 
 // params: {currentTime: int (in sec), timerGoal: int (in sec)}
 function startTimer(currentTime, timerGoal) {
-  clearTimer();
+  stopTimer();
   currentTimer = {timerGoal: timerGoal, durationStarted: currentTime, timeStarted: Date.now()};
   if (timerGoal > currentTime) {
     startAlarm(timerGoal - currentTime);
   }
+}
+
+function stopTimer() {
+  clearTimer();
+  clearAlarm();
 }
 
 function clearTimer() {
@@ -78,9 +83,13 @@ function startAlarm(sec) {
 }
 
 function stopAlarm() {
+  clearAlarm();
+  clearTimer();
+}
+
+function clearAlarm() {
   if ( currentAlarm ) {
     clearTimeout(currentAlarm);
     currentAlarm = null;
   }
-  clearTimer();
 }
