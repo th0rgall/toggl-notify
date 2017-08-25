@@ -62,7 +62,7 @@ function clearTimer() {
   @return {timerGoal: int, runningTime: int, durationStarted: int} if there is an active timer,
 */
 function getTimer() {
-  if (currentTimer) {
+  if (currentTimer != null) {
     var runningTime = (Date.now() - currentTimer.timeStarted) / 1000;
     return {timerGoal: currentTimer.timerGoal,
       runningTime: runningTime,
@@ -76,7 +76,7 @@ function getTimer() {
 var currentAlarm = null;
 
 function startAlarm(sec) {
-  var alarmId = setTimeout(() => {
+  currentAlarm = setTimeout(() => {
     timerNotification();
     stopAlarm();
   }, sec * 1000);
@@ -88,8 +88,9 @@ function stopAlarm() {
 }
 
 function clearAlarm() {
-  if ( currentAlarm ) {
+  if ( currentAlarm != null ) {
     clearTimeout(currentAlarm);
-    currentAlarm = null;
   }
+  currentAlarm = null;
+
 }
