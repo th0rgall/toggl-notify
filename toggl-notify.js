@@ -15,7 +15,7 @@ var $ = require("jquery");
 */
 function durToSec(hhmmss) {
 
-  if (!hhmmss) return 0;
+  if (!hhmmss) return(0);
 
   var tokens = hhmmss.split(":");
   // parse functions
@@ -31,6 +31,27 @@ function durToSec(hhmmss) {
       return pHour(tokens[0]) + pMin(tokens[1]) + (tokens.length == 3 ? pSec(tokens[2]) : 0);
     }
   }
+}
+
+function pad(s) {
+  if (("" + s).length == 1) {
+    return "0" + s;
+  }
+  else {
+    return s;
+  }
+}
+
+function secToDur(s) {
+  if (!s) return("00:00:00");
+
+  h = Math.floor(s/3600);
+  s -= h * 3600;
+  m = Math.floor(s/60);
+  s -= m * 60;
+
+  return `${pad(h)}:${pad(m)}:${pad(s)}`;
+
 }
 
 /**creates the HTML controls element
@@ -52,6 +73,7 @@ function createControls(f, tval) {
   var inputCtrl = $("<input>", {
     type: "text",
     class: "DateTimeDurationPopdown__duration",
+    id: "timer-input",
     value: tval,
     style: "padding: 0.3em 0 0.5em 0;"
   });
@@ -99,6 +121,33 @@ function sendNewTimer(currentTime, timerGoal) {
 }
 
 /**
+  Gets the current timer goal from the background
+  returns null if there is none
+  calls back with timerGoal in seconds
+*/
+function getTimerGoal(callback) {
+  chrome.extension.sendRequest({type: "getTimer"}, function(response) {
+      if (response && response.timerGoal) {
+        callback(response.timerGoal);
+      }
+      else {
+        callback(response);
+      }
+  });
+}
+
+function getInitialTimerGoal(callback) {
+    getTimerGoal((goal) => {
+      if (goal) {
+        callback(secToDur(goal));
+      }
+      else {
+        callback(getDuration());
+      }
+    });
+}
+
+/**
   Abstracts a pattern to handle individual elements retrieved with jQuery
   @param query jquery sring
   @param action function to execute jquery result, if existing
@@ -115,7 +164,7 @@ function queryAction(query, action) {
 }
 
 /**
-  @return the current Toggl timer duration text in the form "hh:mm:ss"
+  @return the current Toggl timer DOM duration text in the form "hh:mm:ss"
   @throws an error when it couldn't be parsed
 */
 function getDuration() {
@@ -133,11 +182,12 @@ function initializeControls(callback) {
   if ($("#notify-controls").length == 0) {
     console.log("will check reinit");
     // insert controls & initialize inputStream
+    // query checks for right page
     queryAction(".Timer__timer .DateTimeDurationPopdown__popdown > div", function(timerDuration) {
-      console.log("doing reinit")
-      timerDuration.append(
-        createControls(createInputStream.bind(null, (stream) => callback(stream)), getDuration())
-      );
+      console.log("doing reinit");
+      getInitialTimerGoal((goal) =>
+        timerDuration.append(
+          createControls(createInputStream.bind(null, (stream) => callback(stream)), goal) ) );
     });
   }
 }
@@ -145,12 +195,19 @@ function initializeControls(callback) {
 /**
   main injection function
   */
-function getData() {
+function initialize() {
 
   var inputStream = null;
 
-  initializeControls((stream) => inputStream = stream);
+  initializeControls((stream) => {
+    inputStream = stream;
 
+    // log time
+    // query to guard for getDuration()
+    queryAction(".Timer__duration", function(timer_duration) {
+      inputStream.subscribe((sec) => sendNewTimer(durToSec(getDuration()), sec));
+    });
+  });
 
   /* Set an interval to check when to (re)initialize the controls
      Disable periodical checking when the tab is hidden */
@@ -167,17 +224,13 @@ function getData() {
   resetInterval(); // first run
   document.addEventListener('visibilitychange', resetInterval);
 
-  // log time
-  // query to guard for getDuration()
-  queryAction(".Timer__duration", function(timer_duration) {
-    inputStream.subscribe((sec) => sendNewTimer(durToSec(getDuration()), sec))
-  });
+
 }
 
 $(document).ready(
   function() {
     // TODO: timeout needed to let the page load
     // find a safer way to do this
-    setTimeout(getData, 3500);
+    setTimeout(initialize, 3500);
   }
 );

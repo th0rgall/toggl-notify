@@ -5,14 +5,16 @@ chrome.extension.onRequest.addListener(
       switch (request.type) {
         case "notify":
           //timerNotification(); TODO: shouldn't be necessary anymore
-          sendResponse({message: "Bacgkround notified"});
+          sendResponse({message: "Background notified"});
           break;
         case "startTimer": // params: {currentTime: ..., timerGoal: ... }
-          startTogglTimer(request.params.currentTime, request.params.timerGoal);
+          startTimer(request.params.currentTime, request.params.timerGoal);
           sendResponse({message: "Background started timer: " + JSON.stringify(request.params)});
+          console.log("Started timer: " + getTimer());
           break;
         case "getTimer":
-          // STUB TODO: needed to initialize when tab was closed
+          console.log("getTimer: " + JSON.stringify(getTimer()));
+          sendResponse(getTimer());
           break;
         default:
           sendResponse({message: "Can't handle request."}); // optional response
@@ -32,24 +34,53 @@ function timerNotification() {
   setTimeout(function(){ chrome.notifications.clear("id"); }, 7000);
 }
 
-// TODO: stub
+// Timer: {alarm: , timeStarted: }
 
-currentTimer = null;
+var currentTimer = null;
+
 
 // params: {currentTime: int (in sec), timerGoal: int (in sec)}
-function startTogglTimer(currentTime, timerGoal) {
+function startTimer(currentTime, timerGoal) {
+  clearTimer();
+  currentTimer = {timerGoal: timerGoal, durationStarted: currentTime, timeStarted: Date.now()};
   if (timerGoal > currentTime) {
     startAlarm(timerGoal - currentTime);
   }
 }
 
+function clearTimer() {
+  currentTimer = null;
+}
+
+/**
+  @return null if there is no active timer
+  @return {timerGoal: int, runningTime: int, durationStarted: int} if there is an active timer,
+*/
+function getTimer() {
+  if (currentTimer) {
+    var runningTime = (Date.now() - currentTimer.timeStarted) / 1000;
+    return {timerGoal: currentTimer.timerGoal,
+      runningTime: runningTime,
+      durationStarted: currentTimer.durationStarted};
+  }
+  else {
+    return null;
+  }
+}
+
+var currentAlarm = null;
+
 function startAlarm(sec) {
-  stopAlarm();
-  currentTimer = setTimeout(timerNotification, sec * 1000);
+  var alarmId = setTimeout(() => {
+    timerNotification();
+    stopAlarm();
+  }, sec * 1000);
 }
 
 function stopAlarm() {
-  if ( currentTimer ) {
-    clearTimeout(currentTimer);
+  if ( currentAlarm ) {
+    clearTimeout(currentAlarm);
+    currentAlarm = null;
   }
+  clearTimer();
 }
