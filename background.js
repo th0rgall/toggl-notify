@@ -10,7 +10,7 @@ chrome.extension.onRequest.addListener(
         case "startTimer": // params: {currentTime: ..., timerGoal: ... }
           startTimer(request.params.currentTime, request.params.timerGoal);
           sendResponse({message: "Background started timer: " + JSON.stringify(request.params)});
-          console.log("Started timer: " + getTimer());
+          console.log("Started timer: " + JSON.stringify(getTimer()));
           break;
         case "getTimer":
           console.log("getTimer: " + JSON.stringify(getTimer()));

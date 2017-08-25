@@ -205,7 +205,10 @@ function initialize() {
     // log time
     // query to guard for getDuration()
     queryAction(".Timer__duration", function(timer_duration) {
-      inputStream.subscribe((sec) => sendNewTimer(durToSec(getDuration()), sec));
+      inputStream
+      .map((sec) => [sec, durToSec(getDuration())])
+      .filter((arr) => arr[0] > arr[1]) //
+      .subscribe((arr) => sendNewTimer(arr[1], arr[0]));
     });
   });
 
