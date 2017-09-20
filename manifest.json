@@ -1,7 +1,8 @@
 {
   "manifest_version": 2,
   "name": "Toggl Notify",
-  "version": "0.2.0",
+  "description": "Extends the Toggl web app with timer notifications.",
+  "version": "0.2.1",
   "author": "th0rgall",
   "permissions": [
     "notifications"
@@ -11,7 +12,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["http://www.toggl.com/app*", "https://www.toggl.com/app*" ],
+      "matches": ["http://www.toggl.com/app*", "https://www.toggl.com/app*", "http://toggl.com/app*", "https://toggl.com/app*"],
       "css": ["toggl-notify.css"],
       "js": ["static/bundle.js"]
     }

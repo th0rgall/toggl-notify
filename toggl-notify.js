@@ -207,7 +207,7 @@ function initialize() {
     queryAction(".Timer__duration", function(timer_duration) {
       inputStream
       .map((sec) => [sec, durToSec(getDuration())])
-      .filter((arr) => arr[0] > arr[1]) //
+      .filter((arr) => arr[0] > arr[1]) // input must be higher than duration
       .subscribe((arr) => sendNewTimer(arr[1], arr[0]));
     });
   });
