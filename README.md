@@ -1,3 +1,9 @@
+**This project is deprecated**. It might still work but has known problems that I won't work on *for now*. 
+
+This was one of my first attempts in 2017 to modify a website with dynamically generated elements. I've done [some more](https://github.com/th0rgall/voc-enhancer) of that and learned how to it properly. This one needs to be redesigned.
+
+-----
+
 **toggl-notify** is a Chrome extension for [Toggl](https://toggl.com/) users. 
 
 It allows you to set a **time limit** to a running timer and it will **notify** you when that limit has been exceeded.
